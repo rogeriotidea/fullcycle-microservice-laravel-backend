@@ -7,10 +7,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use App\Models\Category;
 use Tests\TestCase;
+use Tests\Traits\TestValidations;
 
 class CategoryControllerTest extends TestCase
 {
-    use DatabaseMigrations;
+    use DatabaseMigrations, TestValidations;
   
     public function testIndex()
     {
@@ -29,8 +30,22 @@ class CategoryControllerTest extends TestCase
     }
 
     public function testInvalidationData(){
-        $response = $this->json('POST', route('categories.store'), []);
-        $response->assertStatus(422)->assertJsonValidationErrors(['name']);
+
+        $data = [
+            'name' => ''
+        ];
+        $this->assertInvalidationInStoreAction($data, 'required');
+
+        $data = [
+            'name' => str_repeat('a', 256),
+        ];
+        $this->assertInvalidationInStoreAction($data, 'max.string', ['max' => 255]);
+
+        $data = [
+            'is_active' => 'a'
+        ];
+        $this->assertInvalidationInStoreAction($data, 'boolean');
+
     } 
 
     public function testStore(){
@@ -79,6 +94,10 @@ class CategoryControllerTest extends TestCase
 
         $this->assertNull(Category::find($cat->id));
         $this->assertNotNull(Category::withTrashed()->find($cat->id));
+    }
+
+    protected function routesStore(){
+        return route('categories.store');
     }
 
 }
